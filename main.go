@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"bufio"
+	"io"
 	"net"
 	"net/http"
-	"time"
+	"os"
 )
 
 func handle(w http.ResponseWriter, req *http.Request) {
@@ -12,21 +13,22 @@ func handle(w http.ResponseWriter, req *http.Request) {
 	if !ok {
 		panic("expected http.ResponseWriter to be an http.Flusher")
 	}
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	for i := 1; i <= 10; i++ {
-		fmt.Fprintf(w, "Chunk #%d\n", i)
+	w.Header().Set("Transfer-Encoding", "chunked")
+	var err error
+	reader := bufio.NewReader(os.Stdin)
+	for i := 1; err == nil; i++ {
+		_, err = io.CopyN(w, reader, 32)
 		flusher.Flush() // Trigger "chunked" encoding and send a chunk...
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
 func main() {
 	/* Net listener */
 	n := "tcp"
-	addr := "127.0.0.1:9094"
+	addr := "127.0.0.1:9099"
 	l, err := net.Listen(n, addr)
 	if err != nil {
-		panic("AAAAH")
+		panic("Failed to start server")
 	}
 
 	/* HTTP server */
